@@ -12,5 +12,31 @@ Note that this for this package to work as intended, you must take great care al
 
 Simple graceful shutdown:
 ```go
+import(
+	"math/rand"
+	"os/signal"
+)
+func main() {
+	jh := jobhandler.NewJobHandler()
+
+	/* Handle termination */
+    var termChan = make(chan os.Signal, 1)
+    signal.Notify(termChan, syscall.SIGTERM)
+        jobHandler.Close()
+    }()
+
+    /* Create jobs */
+	mJobs := 10
+	if !jh.TryJobs(nJobs) {
+		return
+	}
+	for i := 0; i < mJobs; i++ {
+		go func() {
+			time.Sleep(rand.Int63(5) * time.Second)
+			jh.DoneJob()
+		}
+	}
+	jh.WaitAll()
+
 }
 ```
