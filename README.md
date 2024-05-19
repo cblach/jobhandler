@@ -10,33 +10,27 @@ Note that this for this package to work as intended, you must take great care al
 
 ## Usage
 
-Simple graceful shutdown:
+Simple graceful shutdown upon receiving SIGTERM:
 ```go
+package main
 import(
-	"math/rand"
-	"os/signal"
+    "context"
+    "fmt"
+    "github.com/cblach/jobhandler"
+    "os"
+    "os/signal"
+    "syscall"
+    "time"
 )
 func main() {
-	jh := jobhandler.NewJobHandler()
-
-	/* Handle termination */
-    var termChan = make(chan os.Signal, 1)
-    signal.Notify(termChan, syscall.SIGTERM)
-        jobHandler.Close()
-    }()
-
-    /* Create jobs */
-	mJobs := 10
-	if !jh.TryJobs(nJobs) {
-		return
-	}
-	for i := 0; i < mJobs; i++ {
-		go func() {
-			time.Sleep(rand.Int63(5) * time.Second)
-			jh.DoneJob()
-		}
-	}
-	jh.WaitAll()
-
+    ctx, _ := signal.NotifyContext(context.Background(), syscall.SIGTERM)
+    jh := jobhandler.New(ctx)
+    for range time.Tick(1 * time.Second) {
+        if !jh.TryFunc(func () { fmt.Println("running job... and done.") }) {
+            break
+        }
+    }
+    jh.WaitAll()
+    os.Exit(0)
 }
 ```
