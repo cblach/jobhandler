@@ -46,8 +46,8 @@ func (jc *JobHandler) Try() bool {
 // and false if the JobHandler is stopped.
 // Do not call Done(), the job is automatically
 // flagged as done after fn exits.
-func (jc *JobHandler) TryGo(fn func ()) bool {
-    if jc.Try() {
+func (jc *JobHandler) TryFunc(fn func ()) bool {
+    if !jc.Try() {
         return false
     }
     go func() {
@@ -84,13 +84,13 @@ func (jc *JobHandler) TryN(delta int) bool {
     return true
 }
 
-// TryNGo attempts to take on multiple asynchronous jobs.
+// TryNFunc attempts to take on multiple asynchronous jobs.
 // Returns true if the jobs are successfully taken
 // and false if the JobHandler is stopped. The func fn is called n times
 // with the job index, 0 in the first call n-1 in the final call.
 // Do not call Done(), the job is automatically
 // flagged as done after fn exits..
-func (jc *JobHandler) TryNGo(delta int, fn func (int)) bool {
+func (jc *JobHandler) TryNFunc(delta int, fn func (int)) bool {
     if !jc.TryN(delta) {
         return false
     }
