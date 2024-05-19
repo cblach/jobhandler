@@ -48,12 +48,26 @@ func (jc *JobHandler) Try() bool {
     return jc.TryN(1)
 }
 
-// Attempt to take on a single asynchronous job.
+// Attempt to take on a single job.
 // Returns true if job is successfully taken
 // and false if the JobHandler is stopped.
 // Do not call Done(), the job is automatically
 // flagged as done after fn exits.
 func (jc *JobHandler) TryFunc(fn func ()) bool {
+    if !jc.Try() {
+        return false
+    }
+    fn()
+    jc.Done()
+    return true
+}
+
+// Attempt to take on a single asynchronous job.
+// Returns true if job is successfully taken
+// and false if the JobHandler is stopped.
+// Do not call Done(), the job is automatically
+// flagged as done after fn exits.
+func (jc *JobHandler) TryFuncAsync(fn func ()) bool {
     if !jc.Try() {
         return false
     }
@@ -64,7 +78,7 @@ func (jc *JobHandler) TryFunc(fn func ()) bool {
     return true
 }
 
-// TryN attempts to take on multiple asynchronous jobs.
+// TryN attempts to take on multiple jobs.
 // Returns true if the jobs are successfully taken
 // and false if the JobHandler is stopped.
 // Done must be called for each of the n jobs taken.
@@ -97,7 +111,7 @@ func (jc *JobHandler) TryN(delta int) bool {
 // with the job index, 0 in the first call n-1 in the final call.
 // Do not call Done(), the job is automatically
 // flagged as done after fn exits..
-func (jc *JobHandler) TryNFunc(delta int, fn func (int)) bool {
+func (jc *JobHandler) TryNFuncAsync(delta int, fn func (int)) bool {
     if !jc.TryN(delta) {
         return false
     }
