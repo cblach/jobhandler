@@ -12,7 +12,6 @@ var JobHandlerStoppedError = errors.New("jobhandler stopped")
 
 // A jobhandler enables taking on new jobs until the jobhandler is stopped.
 type JobHandler struct {
-    ctx      context.Context
     n        int64
     stopChan chan struct{}
     running  atomic.Bool
@@ -24,12 +23,20 @@ type JobHandler struct {
 // A zero group is valid, but is stopped and will not accept any jobs.
 func New(ctx context.Context) *JobHandler {
     jc := JobHandler{
-        ctx:      ctx,
         n:        1,
         stopChan: make(chan struct{}),
     }
     jc.running.Store(true)
     jc.wg.Add(1)
+    if ctx != nil && ctx.Done() != nil {
+        go func() {
+            select {
+            case <-ctx.Done():
+                jc.Stop()
+            case <-jc.stopChan:
+            }
+        }()
+    }
     return &jc
 }
 
@@ -129,15 +136,6 @@ func (jc *JobHandler) Done() {
 // WaitAll is typically used to wait for a graceful shutdowns, and is
 // in that case typically followed by os.Exit(0)
 func (jc *JobHandler) WaitAll() {
-    if jc.ctx != nil && jc.ctx.Done() != nil {
-        go func() {
-            select {
-            case <-jc.ctx.Done():
-                jc.Stop()
-            case <-jc.stopChan:
-            }
-        }()
-    }
     jc.wg.Wait()
 }
 
