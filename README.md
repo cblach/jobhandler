@@ -25,11 +25,17 @@ import(
 func main() {
     ctx, _ := signal.NotifyContext(context.Background(), syscall.SIGTERM)
     jh := jobhandler.New(ctx)
-    for range time.Tick(1 * time.Second) {
-        if !jh.TryFunc(func () { fmt.Println("running job... and done.") }) {
-            break
+    go func () {
+        for {
+            if !jh.TryFunc(func () {
+                fmt.Println("running critical job...")
+                time.Sleep(5 * time.Second)
+                fmt.Println("... and done")
+            }) {
+                break
+            }
         }
-    }
+    }()
     jh.WaitAll()
     os.Exit(0)
 }
