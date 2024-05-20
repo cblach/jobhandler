@@ -1,7 +1,10 @@
 package jobhandler
 import(
     "context"
+    "slices"
+    "sync/atomic"
     "testing"
+    "time"
 )
 
 func TestZeroHandler(t *testing.T) {
@@ -108,6 +111,126 @@ func TestContext(t *testing.T) {
         }()
         ch<-struct{}{}
         jh.WaitAll()
+    })
+}
+
+func TestTryFunc(t *testing.T) {
+    t.Run("open jobhandler", func (t *testing.T) {
+        didRunFn := false
+        jh := New(context.Background())
+        if !jh.TryFunc(func () { didRunFn = true }) {
+            t.Fatal("unable to try")
+        }
+        jh.Stop()
+        jh.WaitAll()
+        if !didRunFn {
+            t.Fatal("function did not run")
+        }
+    })
+    t.Run("closed jobhandler", func (t *testing.T) {
+        didRunFn := false
+        jh := New(context.Background())
+        jh.Stop()
+        if jh.TryFunc(func () { didRunFn = true }) {
+            t.Fatal("should not accept jobs")
+        }
+        jh.WaitAll()
+        if didRunFn {
+            t.Fatal("function did run")
+        }
+    })
+}
+
+func TestTryFuncAsync(t *testing.T) {
+    t.Run("open jobhandler", func (t *testing.T) {
+        didRunFn := false
+        jh := New(context.Background())
+        if !<-jh.TryFuncAsync(func () { didRunFn = true }) {
+            t.Fatal("unable to try")
+        }
+        jh.Stop()
+        jh.WaitAll()
+        if !didRunFn {
+            t.Fatal("function did not run")
+        }
+    })
+    t.Run("closed jobhandler", func (t *testing.T) {
+        didRunFn := false
+        jh := New(context.Background())
+        jh.Stop()
+        if <-jh.TryFuncAsync(func () { didRunFn = true }) {
+            t.Fatal("should not accept jobs")
+        }
+        jh.WaitAll()
+        if didRunFn {
+            t.Fatal("function did run")
+        }
+    })
+}
+
+func TestTryNFuncAsync(t *testing.T) {
+    t.Run("open jobhandler", func (t *testing.T) {
+        didRunFn := false
+        jh := New(context.Background())
+        if !<-jh.TryNFuncAsync(1, 1, func (i int) { didRunFn = true }) {
+            t.Fatal("unable to try")
+        }
+        jh.Stop()
+        jh.WaitAll()
+        if !didRunFn {
+            t.Fatal("function did not run")
+        }
+    })
+    t.Run("closed jobhandler", func (t *testing.T) {
+        didRunFn := false
+        jh := New(context.Background())
+        jh.Stop()
+        if <-jh.TryNFuncAsync(1, 1, func (i int) { didRunFn = true }) {
+            t.Fatal("should not accept jobs")
+        }
+        jh.WaitAll()
+        if didRunFn {
+            t.Fatal("function did run")
+        }
+    })
+    t.Run("open jobhandler: limit", func (t *testing.T) {
+        delta := 11
+        limit := 5
+        ch := make(chan struct{})
+        arr := make([]int, 0, delta)
+        var nRunning atomic.Int32
+        jh := New(context.Background())
+        if !<-jh.TryNFuncAsync(delta, limit, func (i int) {
+            nRunning.Add(1)
+            ch <- struct{}{}
+            arr = append(arr, i)
+            nRunning.Add(-1)
+        }) {
+            t.Fatal("unable to try")
+        }
+        go func () {
+            for len(arr) < delta {
+                for int(nRunning.Load()) < min(limit, delta - len(arr)) {
+                    time.Sleep(1 * time.Millisecond)
+                }
+                time.Sleep(10 * time.Millisecond)
+                if int(nRunning.Load()) != min(limit, delta - len(arr)) {
+                    panic("unexpected running count")
+                }
+                <-ch
+            }
+        }()
+        jh.Stop()
+        jh.WaitAll()
+        slices.Sort(arr)
+        if len(arr) != delta {
+            t.Fatal("unexpected length", len(arr))
+        }
+        for i := 0; i < delta; i++ {
+            if arr[i] != i {
+                t.Fatal("unexpected value", arr[i])
+            }
+        }
     })
 }
 

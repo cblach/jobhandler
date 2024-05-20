@@ -10,6 +10,39 @@ Note that this for this package to work as intended, you must take great care al
 
 ## Usage
 
+Basic usage with context:
+```go
+package main
+import(
+    "context"
+    "fmt"
+    "github.com/cblach/jobhandler"
+    "time"
+)
+
+var JobHandler *jobhandler.JobHandler
+
+func maybeRunJob() {
+    if !JobHandler.Try() {
+        return
+    }
+    go func () {
+        defer JobHandler.Done()
+        fmt.Println("running critical job...")
+        time.Sleep(5 * time.Second)
+        fmt.Println("... and done")
+    }()
+}
+
+func main() {
+    ctx, cancel := context.WithCancel(context.Background())
+    JobHandler = jobhandler.New(ctx)
+    maybeRunJob()
+    cancel()
+    JobHandler.WaitAll()
+}
+```
+
 Simple graceful shutdown upon receiving SIGTERM:
 ```go
 package main
