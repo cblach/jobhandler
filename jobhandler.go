@@ -60,6 +60,7 @@ func (jh *JobHandler) TryFunc(fn func()) bool {
     return true
 }
 // TryN attempts to take on multiple jobs.
+// Either all jobs are taken or none are taken.
 // Returns true if the jobs are successfully taken
 // and false if the JobHandler is stopped.
 // Done must be called for each of the delta jobs taken.
@@ -109,6 +110,7 @@ func (jh *JobHandler) TryFuncAsync(fn func()) <-chan bool {
 
 // TryFuncAsync is a convenience function to run coupled jobs.
 // It combines TryN() and Done().
+// Either all jobs are taken or none are taken.
 // Func fn is called delta times with the job index,
 // 0 in the first call delta-1 in the final call.
 // A goroutine is spawned for each call, but no more than

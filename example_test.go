@@ -4,6 +4,7 @@ import(
     "fmt"
     "github.com/cblach/jobhandler"
     "slices"
+    "sync/atomic"
 )
 
 func ExampleJobHandler_Try() {
@@ -42,7 +43,7 @@ func ExampleJobHandler_TryN() {
 func ExampleJobHandler_TryFunc() {
     jh := jobhandler.New(context.Background())
     if !jh.TryFunc(func () {
-    	fmt.Println("did some job...")
+        fmt.Println("did some job...")
     }) {
         fmt.Println("failed to take on job")
     }
@@ -61,4 +62,32 @@ func ExampleJobHandler_TryFuncAsync() {
     jh.Stop()
     jh.WaitAll()
     // Output: did some job...
+}
+
+func ExampleJobHandler_TryNFuncAsync() {
+    jh := jobhandler.New(context.Background())
+    var sum atomic.Uint64
+    isPrime := func(n int) bool {
+        if n <= 1 {
+            return false
+        }
+        for i := 2; i < n; i++ {
+            if n % i == 0 {
+                return false
+            }
+        }
+        return true
+    }
+    // sum all primes from 1 to 100
+    if !<-jh.TryNFuncAsync(100, 5, func (i int) {
+        if isPrime(i) {
+            sum.Add(uint64(i))
+        }
+    }) {
+        fmt.Println("failed to take on job")
+    }
+    jh.Stop()
+    jh.WaitAll()
+    fmt.Print("prime sum for 1..100 is ", sum.Load())
+    // Output: prime sum for 1..100 is 1060
 }
