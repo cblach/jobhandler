@@ -1,4 +1,5 @@
 # JobHandler
+![gol½ang tests status](https://github.com/cblach/jobhandler/actions/workflows/go.yml/badge.svg)
 
 A simple package that enables your program to stop job-creation when the jobhandler is stopped.
 The primary usecase for this is graceful shutdowns of services that you do not want to kill forcibly.
